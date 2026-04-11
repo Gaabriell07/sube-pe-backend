@@ -1,0 +1,264 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── ENUMS ───────────────────────────────────────────────────────────────────
+
+enum RolUsuario {
+  PASAJERO
+  CONDUCTOR
+  ADMINISTRADOR
+}
+
+enum Sexo {
+  MASCULINO
+  FEMENINO
+  OTRO
+}
+
+enum TipoCarnet {
+  NORMAL
+  UNIVERSITARIO
+  ESCOLAR
+  POLICIA
+  MILITAR
+  ADULTO_MAYOR
+  DISCAPACITADO
+}
+
+enum EstadoViaje {
+  PENDIENTE
+  EN_CURSO
+  COMPLETADO
+  PENALIZADO
+}
+
+enum EstadoPago {
+  PENDIENTE
+  COMPLETADO
+  FALLIDO
+}
+
+enum EstadoConductor {
+  ACTIVO
+  INACTIVO
+  SUSPENDIDO
+}
+
+// ─── USUARIOS ────────────────────────────────────────────────────────────────
+
+model Usuario {
+  id              String      @id @default(uuid())
+  supabaseId      String      @unique
+  email           String      @unique
+  nombres         String
+  apellidos       String
+  dni             String      @unique
+  fechaNacimiento DateTime
+  sexo            Sexo
+  rol             RolUsuario
+  archivos        Archivo[]
+  creadoEn        DateTime    @default(now())
+  actualizadoEn   DateTime    @updatedAt
+
+  pasajero        Pasajero?
+  conductor       Conductor?
+  administrador   Administrador?
+}
+
+// ─── PASAJERO ────────────────────────────────────────────────────────────────
+
+model Pasajero {
+  id          String      @id @default(uuid())
+  usuarioId   String      @unique
+  usuario     Usuario     @relation(fields: [usuarioId], references: [id])
+  saldo       Float       @default(0)
+  tipoCarnet  TipoCarnet  @default(NORMAL)
+  viajes      Viaje[]
+  recargas    Recarga[]
+  penalidades Penalidad[]
+  recompensas Recompensa[]
+}
+
+// ─── CONDUCTOR ───────────────────────────────────────────────────────────────
+
+model Conductor {
+  id                String          @id @default(uuid())
+  usuarioId         String          @unique
+  usuario           Usuario         @relation(fields: [usuarioId], references: [id])
+  saldo             Float           @default(0)
+  estado            EstadoConductor @default(ACTIVO)
+  turnoActivo       Boolean         @default(false)
+  paraderoActualIdx Int?
+  rutaActivaId      String?
+  unidades          UnidadConductor[]
+  viajes            Viaje[]
+  pagos             PagoSueldo[]
+}
+
+// ─── ADMINISTRADOR ───────────────────────────────────────────────────────────
+
+model Administrador {
+  id          String      @id @default(uuid())
+  usuarioId   String      @unique
+  usuario     Usuario     @relation(fields: [usuarioId], references: [id])
+  empresa     String
+  pagos       PagoSueldo[]
+  comunicados Comunicado[]
+}
+
+// ─── ARCHIVOS ─────────────────────────────────────────────────────────────────
+
+model Archivo {
+  id          String   @id @default(uuid())
+  usuarioId   String
+  usuario     Usuario  @relation(fields: [usuarioId], references: [id])
+  url         String
+  tipo        String
+  creadoEn    DateTime @default(now())
+}
+
+// ─── UNIDADES DE TRANSPORTE ──────────────────────────────────────────────────
+
+model Unidad {
+  id          String            @id @default(uuid())
+  placa       String            @unique
+  nombre      String
+  conductores UnidadConductor[]
+  viajes      Viaje[]
+}
+
+model UnidadConductor {
+  id          String    @id @default(uuid())
+  unidadId    String
+  unidad      Unidad    @relation(fields: [unidadId], references: [id])
+  conductorId String
+  conductor   Conductor @relation(fields: [conductorId], references: [id])
+  asignadoEn  DateTime  @default(now())
+}
+
+// ─── RUTAS Y TARIFARIO ───────────────────────────────────────────────────────
+
+model Ruta {
+  id          String    @id @default(uuid())
+  nombre      String
+  paraderos   Paradero[]
+  viajes      Viaje[]
+}
+
+model Paradero {
+  id          String  @id @default(uuid())
+  rutaId      String
+  ruta        Ruta    @relation(fields: [rutaId], references: [id])
+  nombre      String
+  latitud     Float
+  longitud    Float
+  orden       Int
+}
+
+model Tarifario {
+  id          String     @id @default(uuid())
+  tipoCarnet  TipoCarnet
+  precio      Float
+  descripcion String?
+  activo      Boolean    @default(true)
+  creadoEn    DateTime   @default(now())
+}
+
+// ─── VIAJES ──────────────────────────────────────────────────────────────────
+
+model Viaje {
+  id              String      @id @default(uuid())
+  pasajeroId      String
+  pasajero        Pasajero    @relation(fields: [pasajeroId], references: [id])
+  conductorId     String?
+  conductor       Conductor?  @relation(fields: [conductorId], references: [id])
+  unidadId        String?
+  unidad          Unidad?     @relation(fields: [unidadId], references: [id])
+  rutaId          String
+  ruta            Ruta        @relation(fields: [rutaId], references: [id])
+  paraderoInicio  String
+  paraderoFin     String
+  qrCodigo        String      @unique
+  estado          EstadoViaje @default(PENDIENTE)
+  montoDescontado Float       @default(0)
+  alertaPasajero  String?
+  escaneadoEn     DateTime?
+  creadoEn        DateTime    @default(now())
+  penalidad       Penalidad?
+}
+
+// ─── QR ──────────────────────────────────────────────────────────────────────
+
+model QrEscaneo {
+  id          String   @id @default(uuid())
+  qrCodigo    String
+  conductorId String
+  exitoso     Boolean
+  escaneadoEn DateTime @default(now())
+}
+
+// ─── PENALIDADES ─────────────────────────────────────────────────────────────
+
+model Penalidad {
+  id          String   @id @default(uuid())
+  pasajeroId  String
+  pasajero    Pasajero @relation(fields: [pasajeroId], references: [id])
+  viajeId     String   @unique
+  viaje       Viaje    @relation(fields: [viajeId], references: [id])
+  monto       Float
+  motivo      String
+  creadoEn    DateTime @default(now())
+}
+
+// ─── RECOMPENSAS ─────────────────────────────────────────────────────────────
+
+model Recompensa {
+  id          String   @id @default(uuid())
+  pasajeroId  String
+  pasajero    Pasajero @relation(fields: [pasajeroId], references: [id])
+  puntos      Int
+  motivo      String
+  creadoEn    DateTime @default(now())
+}
+
+// ─── RECARGAS ────────────────────────────────────────────────────────────────
+
+model Recarga {
+  id          String     @id @default(uuid())
+  pasajeroId  String
+  pasajero    Pasajero   @relation(fields: [pasajeroId], references: [id])
+  monto       Float
+  estado      EstadoPago @default(PENDIENTE)
+  creadoEn    DateTime   @default(now())
+}
+
+// ─── PAGOS DE SUELDO ─────────────────────────────────────────────────────────
+
+model PagoSueldo {
+  id              String        @id @default(uuid())
+  conductorId     String
+  conductor       Conductor     @relation(fields: [conductorId], references: [id])
+  administradorId String
+  administrador   Administrador @relation(fields: [administradorId], references: [id])
+  monto           Float
+  estado          EstadoPago    @default(PENDIENTE)
+  creadoEn        DateTime      @default(now())
+}
+
+// ─── COMUNICADOS ─────────────────────────────────────────────────────────────
+
+model Comunicado {
+  id              String        @id @default(uuid())
+  administradorId String
+  administrador   Administrador @relation(fields: [administradorId], references: [id])
+  titulo          String
+  contenido       String
+  creadoEn        DateTime      @default(now())
+}
