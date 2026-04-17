@@ -21,4 +21,7 @@ router.post('/canjear-viaje-gratis', recompensaController.canjearViajeGratis);
 router.get('/viaje-activo-estado',          pasajeroController.getViajeActivoEstado);
 router.post('/confirmar-alerta/:viajeId',   pasajeroController.confirmarAlerta);
 
+// ─── Bajar del bus (sin penalidad si está antes del destino) ──────────────────
+router.post('/bajar',                       pasajeroController.bajarDelBus);
+
 module.exports = router;

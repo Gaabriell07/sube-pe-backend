@@ -1,7 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../lib/prisma'); // ← usa el singleton, no crea otro PrismaClient
 
-const prisma = new PrismaClient();
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_ANON_KEY
@@ -24,13 +23,13 @@ const verificarToken = async (req, res, next) => {
       return res.status(401).json({ error: 'Token inválido o expirado' });
     }
 
-    // Obtener usuario completo de nuestra base de datos
+    // Obtener usuario de nuestra BD (usando el singleton compartido)
     const usuario = await prisma.usuario.findUnique({
       where: { supabaseId: data.user.id },
       include: {
-        pasajero: true,
-        conductor: true,
-        administrador: true,
+        pasajero:       true,
+        conductor:      true,
+        administrador:  true,
       },
     });
 
@@ -41,7 +40,7 @@ const verificarToken = async (req, res, next) => {
     req.usuario = usuario;
     next();
   } catch (error) {
-    console.error(error);
+    console.error('Auth middleware error:', error);
     res.status(500).json({ error: 'Error al verificar token' });
   }
 };

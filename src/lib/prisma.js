@@ -1,15 +1,18 @@
 const { PrismaClient } = require('@prisma/client');
 
-// Singleton global — evita múltiples connection pools
-// Ver: https://www.prisma.io/docs/guides/performance-and-optimization/connection-management
-let prisma;
-
+// ── Singleton global ─────────────────────────────────────────────────────────
+// Un solo PrismaClient con connection pool para toda la app.
+// En Render (free tier) se recomiendan ≤5 conexiones concurrentes porque
+// Supabase free permite max 20 y comparte con otras apps tuyas.
 if (!global.__prisma) {
   global.__prisma = new PrismaClient({
     log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
+    datasources: {
+      db: {
+        url: process.env.DATABASE_URL, // pgbouncer=true ya configurado en .env
+      },
+    },
   });
 }
 
-prisma = global.__prisma;
-
-module.exports = prisma;
+module.exports = global.__prisma;

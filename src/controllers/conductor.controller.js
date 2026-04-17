@@ -1,4 +1,5 @@
 const prisma = require('../lib/prisma');
+const conductorService = require('../services/conductor.service');
 
 // ─── PERFIL ──────────────────────────────────────────────────────────────────
 const getPerfil = async (req, res) => {
@@ -303,6 +304,28 @@ const finalizarTurno = async (req, res) => {
   }
 };
 
+// ─── GANANCIAS DEL DÍA ───────────────────────────────────────────────────────
+// OCP: la lógica de cálculo vive en conductorService; este controller
+// solo orquesta (HTTP in → servicio → HTTP out). Agregar filtros futuros
+// (semana, mes) no requiere modificar este controller.
+const getGananciasHoy = async (req, res) => {
+  try {
+    const conductor = await prisma.conductor.findUnique({
+      where: { usuarioId: req.usuario.id },
+    });
+
+    if (!conductor) {
+      return res.status(404).json({ error: 'Conductor no encontrado' });
+    }
+
+    const ganancias = await conductorService.getGananciasHoy(conductor.id);
+    res.json(ganancias);
+  } catch (error) {
+    console.error('Error al obtener ganancias:', error);
+    res.status(500).json({ error: 'Error al obtener ganancias del día' });
+  }
+};
+
 module.exports = {
   getPerfil,
   getSaldo,
@@ -312,4 +335,5 @@ module.exports = {
   getTurnoActivo,
   siguienteParadero,
   finalizarTurno,
+  getGananciasHoy,
 };

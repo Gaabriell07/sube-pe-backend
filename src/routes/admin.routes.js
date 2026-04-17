@@ -18,4 +18,13 @@ router.get('/comunicados', adminController.getComunicados);
 router.post('/tarifario', adminController.crearTarifario);
 router.get('/tarifario', adminController.getTarifario);
 
+// ─── Nuevos endpoints ─────────────────────────────────────────────────────────
+router.get('/pasajeros',         adminController.getPasajeros);
+router.get('/viajes',            adminController.getViajes);
+router.get('/penalidades',       adminController.getPenalidades);
+router.get('/unidades',          adminController.getUnidades);
+router.post('/unidades',         adminController.crearUnidad);
+router.delete('/unidades/:id',   adminController.eliminarUnidad);
+
 module.exports = router;
+

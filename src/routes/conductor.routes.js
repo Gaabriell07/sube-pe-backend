@@ -17,4 +17,7 @@ router.post('/iniciar-turno',       conductorController.iniciarTurno);
 router.post('/siguiente-paradero',  conductorController.siguienteParadero);
 router.post('/finalizar-turno',     conductorController.finalizarTurno);
 
+// ─── Ganancias ────────────────────────────────────────────────────────────────
+router.get('/ganancias-hoy',        conductorController.getGananciasHoy);
+
 module.exports = router;

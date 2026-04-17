@@ -219,6 +219,157 @@ const getTarifario = async (req, res) => {
   }
 };
 
+// ─── PASAJEROS (paginado) ─────────────────────────────────────────────────────
+const getPasajeros = async (req, res) => {
+  const page  = parseInt(req.query.page)  || 1;
+  const limit = parseInt(req.query.limit) || 20;
+  const skip  = (page - 1) * limit;
+  const buscar = req.query.buscar || '';
+
+  try {
+    const where = buscar
+      ? {
+          OR: [
+            { usuario: { nombres:   { contains: buscar, mode: 'insensitive' } } },
+            { usuario: { apellidos: { contains: buscar, mode: 'insensitive' } } },
+            { usuario: { email:     { contains: buscar, mode: 'insensitive' } } },
+            { usuario: { dni:       { contains: buscar, mode: 'insensitive' } } },
+          ],
+        }
+      : {};
+
+    const [total, pasajeros] = await Promise.all([
+      prisma.pasajero.count({ where }),
+      prisma.pasajero.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { usuario: { creadoEn: 'desc' } },
+        include: {
+          usuario: { select: { nombres: true, apellidos: true, email: true, dni: true, creadoEn: true } },
+          _count:  { select: { viajes: true } },
+        },
+      }),
+    ]);
+
+    res.json({ total, page, limit, totalPaginas: Math.ceil(total / limit), pasajeros });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al obtener pasajeros' });
+  }
+};
+
+// ─── VIAJES GLOBALES (paginado) ───────────────────────────────────────────────
+const getViajes = async (req, res) => {
+  const page   = parseInt(req.query.page)   || 1;
+  const limit  = parseInt(req.query.limit)  || 25;
+  const skip   = (page - 1) * limit;
+  const estado = req.query.estado || undefined; // PENDIENTE | EN_CURSO | COMPLETADO | PENALIZADO
+
+  try {
+    const where = estado ? { estado } : {};
+
+    const [total, viajes] = await Promise.all([
+      prisma.viaje.count({ where }),
+      prisma.viaje.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { creadoEn: 'desc' },
+        include: {
+          pasajero:  { include: { usuario: { select: { nombres: true, apellidos: true } } } },
+          conductor: { include: { usuario: { select: { nombres: true, apellidos: true } } } },
+          ruta:      { select: { nombre: true } },
+          penalidad: true,
+        },
+      }),
+    ]);
+
+    res.json({ total, page, limit, totalPaginas: Math.ceil(total / limit), viajes });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al obtener viajes' });
+  }
+};
+
+// ─── PENALIDADES ──────────────────────────────────────────────────────────────
+const getPenalidades = async (req, res) => {
+  const page  = parseInt(req.query.page)  || 1;
+  const limit = parseInt(req.query.limit) || 25;
+  const skip  = (page - 1) * limit;
+
+  try {
+    const [total, penalidades] = await Promise.all([
+      prisma.penalidad.count(),
+      prisma.penalidad.findMany({
+        skip,
+        take: limit,
+        orderBy: { creadoEn: 'desc' },
+        include: {
+          pasajero: { include: { usuario: { select: { nombres: true, apellidos: true, email: true } } } },
+          viaje:    { select: { paraderoInicio: true, paraderoFin: true, creadoEn: true } },
+        },
+      }),
+    ]);
+
+    res.json({ total, page, limit, totalPaginas: Math.ceil(total / limit), penalidades });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al obtener penalidades' });
+  }
+};
+
+// ─── UNIDADES (buses) ─────────────────────────────────────────────────────────
+const getUnidades = async (req, res) => {
+  try {
+    const unidades = await prisma.unidad.findMany({
+      include: {
+        conductores: {
+          include: {
+            conductor: {
+              include: { usuario: { select: { nombres: true, apellidos: true } } },
+            },
+          },
+          orderBy: { asignadoEn: 'desc' },
+          take: 1, // Solo el conductor más reciente
+        },
+      },
+      orderBy: { nombre: 'asc' },
+    });
+    res.json(unidades);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener unidades' });
+  }
+};
+
+const crearUnidad = async (req, res) => {
+  const { placa, nombre } = req.body;
+  if (!placa || !nombre) {
+    return res.status(400).json({ error: 'Placa y nombre son requeridos' });
+  }
+  try {
+    const unidad = await prisma.unidad.create({
+      data: { placa: placa.toUpperCase().trim(), nombre: nombre.trim() },
+    });
+    res.status(201).json({ mensaje: 'Unidad creada exitosamente', unidad });
+  } catch (error) {
+    if (error.code === 'P2002') {
+      return res.status(400).json({ error: 'Ya existe una unidad con esa placa' });
+    }
+    res.status(500).json({ error: 'Error al crear unidad' });
+  }
+};
+
+const eliminarUnidad = async (req, res) => {
+  const { id } = req.params;
+  try {
+    await prisma.unidad.delete({ where: { id } });
+    res.json({ mensaje: 'Unidad eliminada exitosamente' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar unidad' });
+  }
+};
+
 module.exports = {
   getPerfil,
   getConductores,
@@ -231,4 +382,12 @@ module.exports = {
   getComunicados,
   crearTarifario,
   getTarifario,
+  // ── Nuevos ──────────────────
+  getPasajeros,
+  getViajes,
+  getPenalidades,
+  getUnidades,
+  crearUnidad,
+  eliminarUnidad,
 };
+

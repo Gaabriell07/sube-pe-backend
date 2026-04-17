@@ -231,4 +231,46 @@ const confirmarAlerta = async (req, res) => {
   }
 };
 
-module.exports = { getPerfil, actualizarPerfil, getSaldo, recargarSaldo, generarQR, getMisViajes, getRecargas, getComunicados, getViajeActivoEstado, confirmarAlerta };
+// ─── BAJAR DEL BUS (pasajero confirma que baja, sin penalidad) ────────────────
+const bajarDelBus = async (req, res) => {
+  try {
+    const pasajero = await prisma.pasajero.findUnique({
+      where: { usuarioId: req.usuario.id },
+    });
+
+    // Buscar viaje activo del pasajero
+    const viaje = await prisma.viaje.findFirst({
+      where: { pasajeroId: pasajero.id, estado: 'EN_CURSO' },
+    });
+
+    if (!viaje) {
+      return res.status(404).json({ error: 'No tienes un viaje activo' });
+    }
+
+    // Si el conductor ya pasó el destino → la penalidad ya fue aplicada
+    if (viaje.alertaPasajero === 'PASADO') {
+      return res.status(400).json({
+        error: 'El conductor ya pasó tu destino. La penalidad fue aplicada automáticamente.',
+      });
+    }
+
+    // NOTA: el saldo ya fue descontado cuando el conductor escaneó el QR.
+    // NO volver a descontar aquí.
+
+    // Cerrar el viaje como COMPLETADO limpiamente
+    const viajeActualizado = await prisma.viaje.update({
+      where: { id: viaje.id },
+      data: {
+        estado: 'COMPLETADO',
+        alertaPasajero: null,
+      },
+    });
+
+    res.json({ ok: true, viaje: viajeActualizado });
+  } catch (error) {
+    console.error('Error bajar del bus:', error);
+    res.status(500).json({ error: 'Error al registrar bajada' });
+  }
+};
+
+module.exports = { getPerfil, actualizarPerfil, getSaldo, recargarSaldo, generarQR, getMisViajes, getRecargas, getComunicados, getViajeActivoEstado, confirmarAlerta, bajarDelBus };
