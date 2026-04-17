@@ -52,7 +52,7 @@ async function main() {
     await prisma.$connect();
     console.log('✅ Prisma conectado a Supabase');
 
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
       console.log(`   Entorno: ${process.env.NODE_ENV || 'development'}`);
     });
@@ -74,5 +74,19 @@ async function shutdown(signal) {
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT',  () => shutdown('SIGINT')); // Ctrl+C en desarrollo
+
+// ── Ping para evitar Cold Start en Render ─────────────────────────────────────
+// Render inyecta la variable RENDER_EXTERNAL_URL automáticamente en el servidor
+const renderUrl = process.env.RENDER_EXTERNAL_URL;
+if (renderUrl) {
+  setInterval(async () => {
+    try {
+      await fetch(`${renderUrl}/health`);
+      console.log('⏱️ Auto-ping silencioso ejecutado exitosamente');
+    } catch (error) {
+      console.error('❌ Error en auto-ping:', error.message);
+    }
+  }, 14 * 60 * 1000); // 14 minutos en milisegundos
+}
 
 main();
