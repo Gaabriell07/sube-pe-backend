@@ -15,6 +15,7 @@ router.post('/asignar-unidad', adminController.asignarUnidad);
 router.get('/dashboard', adminController.getDashboard);
 router.post('/comunicado', adminController.crearComunicado);
 router.get('/comunicados', adminController.getComunicados);
+router.delete('/comunicado/:id', adminController.eliminarComunicado);
 router.post('/tarifario', adminController.crearTarifario);
 router.get('/tarifario', adminController.getTarifario);
 

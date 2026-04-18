@@ -11,7 +11,18 @@ const registro = async (req, res) => {
   const { email, password, nombres, apellidos, dni, fechaNacimiento, sexo, rol } = req.body;
 
   try {
-    // 1. Crear usuario en Supabase Auth
+    // ── 1. Verificar que el DNI no esté ya registrado (pasajero o conductor)
+    if (dni) {
+      const dniExistente = await prisma.usuario.findFirst({ where: { dni } });
+      if (dniExistente) {
+        return res.status(400).json({
+          error: 'Este DNI ya está en uso',
+          mensaje: 'El número de documento ya está registrado. Si ya tienes una cuenta, inicia sesión.',
+        });
+      }
+    }
+
+    // ── 2. Crear usuario en Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,

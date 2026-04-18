@@ -31,6 +31,15 @@ const getConductores = async (req, res) => {
 const agregarConductor = async (req, res) => {
   const { email, password, nombres, apellidos, dni, fechaNacimiento, sexo } = req.body;
   try {
+    // ── 1. Verificar que el DNI no esté en uso (ni pasajero ni conductor)
+    if (dni) {
+      const dniExistente = await prisma.usuario.findFirst({ where: { dni } });
+      if (dniExistente) {
+        return res.status(400).json({ error: 'Este DNI ya está registrado en el sistema. Verifica el documento del conductor.' });
+      }
+    }
+
+    // ── 2. Crear usuario en Supabase Auth
     const { createClient } = require('@supabase/supabase-js');
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 
@@ -184,6 +193,17 @@ const getComunicados = async (req, res) => {
     res.json(comunicados);
   } catch (error) {
     res.status(500).json({ error: 'Error al obtener comunicados' });
+  }
+};
+
+const eliminarComunicado = async (req, res) => {
+  const { id } = req.params;
+  try {
+    await prisma.comunicado.delete({ where: { id } });
+    res.json({ mensaje: 'Comunicado eliminado exitosamente' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al eliminar comunicado' });
   }
 };
 
@@ -380,6 +400,7 @@ module.exports = {
   getDashboard,
   crearComunicado,
   getComunicados,
+  eliminarComunicado,
   crearTarifario,
   getTarifario,
   // ── Nuevos ──────────────────
