@@ -1,6 +1,5 @@
 const prisma = require('../lib/prisma');
 
-// ─── PERFIL ──────────────────────────────────────────────────────────────────
 const getPerfil = async (req, res) => {
   try {
     const usuario = await prisma.usuario.findUnique({
@@ -13,7 +12,6 @@ const getPerfil = async (req, res) => {
   }
 };
 
-// ─── CONDUCTORES ─────────────────────────────────────────────────────────────
 const getConductores = async (req, res) => {
   try {
     const conductores = await prisma.conductor.findMany({
@@ -31,7 +29,18 @@ const getConductores = async (req, res) => {
 const agregarConductor = async (req, res) => {
   const { email, password, nombres, apellidos, dni, fechaNacimiento, sexo } = req.body;
   try {
-    // ── 1. Verificar que el DNI no esté en uso (ni pasajero ni conductor)
+    
+    const fechaNac = new Date(fechaNacimiento);
+    const hoy = new Date();
+    let edad = hoy.getFullYear() - fechaNac.getFullYear();
+    const m = hoy.getMonth() - fechaNac.getMonth();
+    if (m < 0 || (m === 0 && hoy.getDate() < fechaNac.getDate())) {
+      edad--;
+    }
+    if (edad < 18) {
+      return res.status(400).json({ error: 'El conductor debe ser mayor de edad (mínimo 18 años).' });
+    }
+
     if (dni) {
       const dniExistente = await prisma.usuario.findFirst({ where: { dni } });
       if (dniExistente) {
@@ -39,7 +48,6 @@ const agregarConductor = async (req, res) => {
       }
     }
 
-    // ── 2. Crear usuario en Supabase Auth
     const { createClient } = require('@supabase/supabase-js');
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 
@@ -83,7 +91,6 @@ const quitarConductor = async (req, res) => {
   }
 };
 
-// ─── PAGAR SUELDO ────────────────────────────────────────────────────────────
 const pagarSueldo = async (req, res) => {
   const { conductorId, monto } = req.body;
   try {
@@ -111,7 +118,6 @@ const pagarSueldo = async (req, res) => {
   }
 };
 
-// ─── ASIGNAR UNIDAD ──────────────────────────────────────────────────────────
 const asignarUnidad = async (req, res) => {
   const { conductorId, unidadId } = req.body;
   try {
@@ -124,7 +130,6 @@ const asignarUnidad = async (req, res) => {
   }
 };
 
-// ─── DASHBOARD ───────────────────────────────────────────────────────────────
 const getDashboard = async (req, res) => {
   try {
     const hoy = new Date();
@@ -166,7 +171,6 @@ const getDashboard = async (req, res) => {
   }
 };
 
-// ─── COMUNICADOS ─────────────────────────────────────────────────────────────
 const crearComunicado = async (req, res) => {
   const { titulo, contenido } = req.body;
   try {
@@ -207,11 +211,10 @@ const eliminarComunicado = async (req, res) => {
   }
 };
 
-// ─── TARIFARIO ───────────────────────────────────────────────────────────────
 const crearTarifario = async (req, res) => {
   const { tipoCarnet, precio, descripcion } = req.body;
   try {
-    // Desactivar tarifa anterior del mismo tipo
+    
     await prisma.tarifario.updateMany({
       where: { tipoCarnet, activo: true },
       data: { activo: false },
@@ -239,7 +242,6 @@ const getTarifario = async (req, res) => {
   }
 };
 
-// ─── PASAJEROS (paginado) ─────────────────────────────────────────────────────
 const getPasajeros = async (req, res) => {
   const page  = parseInt(req.query.page)  || 1;
   const limit = parseInt(req.query.limit) || 20;
@@ -279,12 +281,11 @@ const getPasajeros = async (req, res) => {
   }
 };
 
-// ─── VIAJES GLOBALES (paginado) ───────────────────────────────────────────────
 const getViajes = async (req, res) => {
   const page   = parseInt(req.query.page)   || 1;
   const limit  = parseInt(req.query.limit)  || 25;
   const skip   = (page - 1) * limit;
-  const estado = req.query.estado || undefined; // PENDIENTE | EN_CURSO | COMPLETADO | PENALIZADO
+  const estado = req.query.estado || undefined; 
 
   try {
     const where = estado ? { estado } : {};
@@ -312,7 +313,6 @@ const getViajes = async (req, res) => {
   }
 };
 
-// ─── PENALIDADES ──────────────────────────────────────────────────────────────
 const getPenalidades = async (req, res) => {
   const page  = parseInt(req.query.page)  || 1;
   const limit = parseInt(req.query.limit) || 25;
@@ -339,7 +339,6 @@ const getPenalidades = async (req, res) => {
   }
 };
 
-// ─── UNIDADES (buses) ─────────────────────────────────────────────────────────
 const getUnidades = async (req, res) => {
   try {
     const unidades = await prisma.unidad.findMany({
@@ -351,7 +350,7 @@ const getUnidades = async (req, res) => {
             },
           },
           orderBy: { asignadoEn: 'desc' },
-          take: 1, // Solo el conductor más reciente
+          take: 1, 
         },
       },
       orderBy: { nombre: 'asc' },
@@ -403,7 +402,7 @@ module.exports = {
   eliminarComunicado,
   crearTarifario,
   getTarifario,
-  // ── Nuevos ──────────────────
+  
   getPasajeros,
   getViajes,
   getPenalidades,

@@ -11,13 +11,11 @@ router.get('/saldo',              conductorController.getSaldo);
 router.post('/escanear-qr',       conductorController.escanearQR);
 router.get('/pasajeros-activos',  conductorController.getPasajerosActivos);
 
-// ─── Sistema de turno por paraderos ──────────────────────────────────────────
 router.get('/turno-activo',         conductorController.getTurnoActivo);
 router.post('/iniciar-turno',       conductorController.iniciarTurno);
 router.post('/siguiente-paradero',  conductorController.siguienteParadero);
 router.post('/finalizar-turno',     conductorController.finalizarTurno);
 
-// ─── Ganancias ────────────────────────────────────────────────────────────────
 router.get('/ganancias-hoy',        conductorController.getGananciasHoy);
 
 module.exports = router;

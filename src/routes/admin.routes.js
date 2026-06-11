@@ -19,13 +19,17 @@ router.delete('/comunicado/:id', adminController.eliminarComunicado);
 router.post('/tarifario', adminController.crearTarifario);
 router.get('/tarifario', adminController.getTarifario);
 
-// ─── Nuevos endpoints ─────────────────────────────────────────────────────────
 router.get('/pasajeros',         adminController.getPasajeros);
 router.get('/viajes',            adminController.getViajes);
 router.get('/penalidades',       adminController.getPenalidades);
 router.get('/unidades',          adminController.getUnidades);
 router.post('/unidades',         adminController.crearUnidad);
 router.delete('/unidades/:id',   adminController.eliminarUnidad);
+
+const solicitudesController = require('../controllers/solicitudes.controller');
+router.get('/solicitudes-carnet',           solicitudesController.getTodasLasSolicitudes);
+router.put('/solicitudes-carnet/:id/aprobar', solicitudesController.aprobarSolicitud);
+router.put('/solicitudes-carnet/:id/rechazar', solicitudesController.rechazarSolicitud);
 
 module.exports = router;
 

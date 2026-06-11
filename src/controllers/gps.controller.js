@@ -1,6 +1,5 @@
 const prisma = require('../lib/prisma');
 
-// Calcula distancia entre dos coordenadas en metros
 const calcularDistancia = (lat1, lon1, lat2, lon2) => {
   const R = 6371000;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -15,7 +14,6 @@ const calcularDistancia = (lat1, lon1, lat2, lon2) => {
   return R * c;
 };
 
-// ─── ACTUALIZAR UBICACIÓN ────────────────────────────────────────────────────
 const actualizarUbicacion = async (req, res) => {
   const { latitud, longitud, viajeId } = req.body;
 
@@ -32,7 +30,6 @@ const actualizarUbicacion = async (req, res) => {
       return res.status(400).json({ error: 'Viaje no encontrado o no activo' });
     }
 
-    // Buscar el paradero destino
     const paraderoDestino = viaje.ruta.paraderos.find(
       (p) => p.nombre === viaje.paraderoFin
     );
@@ -51,7 +48,7 @@ const actualizarUbicacion = async (req, res) => {
     res.json({
       distanciaAlDestino: Math.round(distancia),
       paraderoDestino: paraderoDestino.nombre,
-      llegando: distancia < 200, // menos de 200 metros
+      llegando: distancia < 200, 
     });
   } catch (error) {
     console.error(error);
@@ -59,7 +56,6 @@ const actualizarUbicacion = async (req, res) => {
   }
 };
 
-// ─── VERIFICAR RUTA ──────────────────────────────────────────────────────────
 const verificarRuta = async (req, res) => {
   const { latitud, longitud, viajeId } = req.body;
 
@@ -91,9 +87,8 @@ const verificarRuta = async (req, res) => {
       paraderoDestino.longitud
     );
 
-    // Si el pasajero se pasó más de 500 metros del destino
     if (distanciaAlDestino > 500) {
-      // Aplicar penalidad
+      
       const montoExtra = 2.0;
 
       await prisma.penalidad.create({
@@ -133,7 +128,6 @@ const verificarRuta = async (req, res) => {
   }
 };
 
-// ─── UBICACIONES ACTIVAS PARA CONDUCTOR ──────────────────────────────────────
 const getUbicacionesActivas = async (req, res) => {
   try {
     const conductor = await prisma.conductor.findUnique({

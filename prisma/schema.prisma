@@ -8,7 +8,191 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// ─── ENUMS ───────────────────────────────────────────────────────────────────
+model Usuario {
+  id              String         @id @default(uuid())
+  supabaseId      String         @unique
+  email           String         @unique
+  nombres         String
+  apellidos       String
+  dni             String         @unique
+  fechaNacimiento DateTime
+  sexo            Sexo
+  rol             RolUsuario
+  creadoEn        DateTime       @default(now())
+  actualizadoEn   DateTime       @updatedAt
+  administrador   Administrador?
+  archivos        Archivo[]
+  conductor       Conductor?
+  pasajero        Pasajero?
+}
+
+model Pasajero {
+  id          String       @id @default(uuid())
+  usuarioId   String       @unique
+  saldo       Float        @default(0)
+  tipoCarnet  TipoCarnet   @default(NORMAL)
+  usuario     Usuario      @relation(fields: [usuarioId], references: [id])
+  penalidades Penalidad[]
+  recargas    Recarga[]
+  recompensas       Recompensa[]
+  viajes            Viaje[]
+  solicitudesCarnet SolicitudCarnet[]
+}
+
+model Conductor {
+  id                String            @id @default(uuid())
+  usuarioId         String            @unique
+  saldo             Float             @default(0)
+  estado            EstadoConductor   @default(ACTIVO)
+  turnoActivo       Boolean           @default(false)
+  paraderoActualIdx Int?
+  rutaActivaId      String?
+  usuario           Usuario           @relation(fields: [usuarioId], references: [id])
+  pagos             PagoSueldo[]
+  unidades          UnidadConductor[]
+  viajes            Viaje[]
+}
+
+model Administrador {
+  id          String       @id @default(uuid())
+  usuarioId   String       @unique
+  empresa     String
+  usuario     Usuario      @relation(fields: [usuarioId], references: [id])
+  comunicados Comunicado[]
+  pagos       PagoSueldo[]
+}
+
+model Archivo {
+  id        String   @id @default(uuid())
+  usuarioId String
+  url       String
+  tipo      String
+  creadoEn  DateTime @default(now())
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
+}
+
+model Unidad {
+  id          String            @id @default(uuid())
+  placa       String            @unique
+  nombre      String
+  conductores UnidadConductor[]
+  viajes      Viaje[]
+}
+
+model UnidadConductor {
+  id          String    @id @default(uuid())
+  unidadId    String
+  conductorId String
+  asignadoEn  DateTime  @default(now())
+  conductor   Conductor @relation(fields: [conductorId], references: [id])
+  unidad      Unidad    @relation(fields: [unidadId], references: [id])
+}
+
+model Ruta {
+  id        String     @id @default(uuid())
+  nombre    String
+  paraderos Paradero[]
+  viajes    Viaje[]
+}
+
+model Paradero {
+  id       String @id @default(uuid())
+  rutaId   String
+  nombre   String
+  latitud  Float
+  longitud Float
+  orden    Int
+  ruta     Ruta   @relation(fields: [rutaId], references: [id])
+}
+
+model Tarifario {
+  id          String     @id @default(uuid())
+  tipoCarnet  TipoCarnet
+  precio      Float
+  descripcion String?
+  activo      Boolean    @default(true)
+  creadoEn    DateTime   @default(now())
+}
+
+model Viaje {
+  id                 String      @id @default(uuid())
+  pasajeroId         String
+  conductorId        String?
+  unidadId           String?
+  rutaId             String
+  paraderoInicio     String
+  paraderoFin        String
+  qrCodigo           String      @unique
+  estado             EstadoViaje @default(PENDIENTE)
+  montoDescontado    Float       @default(0)
+  escaneadoEn        DateTime?
+  creadoEn           DateTime    @default(now())
+  alertaPasajero     String?
+  bajadaConfirmada   Boolean?    @default(false)
+  bajadaConfirmadaEn DateTime?   @db.Timestamp(6)
+  penalidad          Penalidad?
+  conductor          Conductor?  @relation(fields: [conductorId], references: [id])
+  pasajero           Pasajero    @relation(fields: [pasajeroId], references: [id])
+  ruta               Ruta        @relation(fields: [rutaId], references: [id])
+  unidad             Unidad?     @relation(fields: [unidadId], references: [id])
+}
+
+model QrEscaneo {
+  id          String   @id @default(uuid())
+  qrCodigo    String
+  conductorId String
+  exitoso     Boolean
+  escaneadoEn DateTime @default(now())
+}
+
+model Penalidad {
+  id         String   @id @default(uuid())
+  pasajeroId String
+  viajeId    String   @unique
+  monto      Float
+  motivo     String
+  creadoEn   DateTime @default(now())
+  pasajero   Pasajero @relation(fields: [pasajeroId], references: [id])
+  viaje      Viaje    @relation(fields: [viajeId], references: [id])
+}
+
+model Recompensa {
+  id         String   @id @default(uuid())
+  pasajeroId String
+  puntos     Int
+  motivo     String
+  creadoEn   DateTime @default(now())
+  pasajero   Pasajero @relation(fields: [pasajeroId], references: [id])
+}
+
+model Recarga {
+  id         String     @id @default(uuid())
+  pasajeroId String
+  monto      Float
+  estado     EstadoPago @default(PENDIENTE)
+  creadoEn   DateTime   @default(now())
+  pasajero   Pasajero   @relation(fields: [pasajeroId], references: [id])
+}
+
+model PagoSueldo {
+  id              String        @id @default(uuid())
+  conductorId     String
+  administradorId String
+  monto           Float
+  estado          EstadoPago    @default(PENDIENTE)
+  creadoEn        DateTime      @default(now())
+  administrador   Administrador @relation(fields: [administradorId], references: [id])
+  conductor       Conductor     @relation(fields: [conductorId], references: [id])
+}
+
+model Comunicado {
+  id              String        @id @default(uuid())
+  administradorId String
+  titulo          String
+  contenido       String
+  creadoEn        DateTime      @default(now())
+  administrador   Administrador @relation(fields: [administradorId], references: [id])
+}
 
 enum RolUsuario {
   PASAJERO
@@ -51,214 +235,20 @@ enum EstadoConductor {
   SUSPENDIDO
 }
 
-// ─── USUARIOS ────────────────────────────────────────────────────────────────
-
-model Usuario {
-  id              String      @id @default(uuid())
-  supabaseId      String      @unique
-  email           String      @unique
-  nombres         String
-  apellidos       String
-  dni             String      @unique
-  fechaNacimiento DateTime
-  sexo            Sexo
-  rol             RolUsuario
-  archivos        Archivo[]
-  creadoEn        DateTime    @default(now())
-  actualizadoEn   DateTime    @updatedAt
-
-  pasajero        Pasajero?
-  conductor       Conductor?
-  administrador   Administrador?
+enum EstadoSolicitud {
+  PENDIENTE
+  APROBADA
+  RECHAZADA
 }
 
-// ─── PASAJERO ────────────────────────────────────────────────────────────────
-
-model Pasajero {
-  id          String      @id @default(uuid())
-  usuarioId   String      @unique
-  usuario     Usuario     @relation(fields: [usuarioId], references: [id])
-  saldo       Float       @default(0)
-  tipoCarnet  TipoCarnet  @default(NORMAL)
-  viajes      Viaje[]
-  recargas    Recarga[]
-  penalidades Penalidad[]
-  recompensas Recompensa[]
-}
-
-// ─── CONDUCTOR ───────────────────────────────────────────────────────────────
-
-model Conductor {
-  id                String          @id @default(uuid())
-  usuarioId         String          @unique
-  usuario           Usuario         @relation(fields: [usuarioId], references: [id])
-  saldo             Float           @default(0)
-  estado            EstadoConductor @default(ACTIVO)
-  turnoActivo       Boolean         @default(false)
-  paraderoActualIdx Int?
-  rutaActivaId      String?
-  unidades          UnidadConductor[]
-  viajes            Viaje[]
-  pagos             PagoSueldo[]
-}
-
-// ─── ADMINISTRADOR ───────────────────────────────────────────────────────────
-
-model Administrador {
-  id          String      @id @default(uuid())
-  usuarioId   String      @unique
-  usuario     Usuario     @relation(fields: [usuarioId], references: [id])
-  empresa     String
-  pagos       PagoSueldo[]
-  comunicados Comunicado[]
-}
-
-// ─── ARCHIVOS ─────────────────────────────────────────────────────────────────
-
-model Archivo {
-  id          String   @id @default(uuid())
-  usuarioId   String
-  usuario     Usuario  @relation(fields: [usuarioId], references: [id])
-  url         String
-  tipo        String
-  creadoEn    DateTime @default(now())
-}
-
-// ─── UNIDADES DE TRANSPORTE ──────────────────────────────────────────────────
-
-model Unidad {
-  id          String            @id @default(uuid())
-  placa       String            @unique
-  nombre      String
-  conductores UnidadConductor[]
-  viajes      Viaje[]
-}
-
-model UnidadConductor {
-  id          String    @id @default(uuid())
-  unidadId    String
-  unidad      Unidad    @relation(fields: [unidadId], references: [id])
-  conductorId String
-  conductor   Conductor @relation(fields: [conductorId], references: [id])
-  asignadoEn  DateTime  @default(now())
-}
-
-// ─── RUTAS Y TARIFARIO ───────────────────────────────────────────────────────
-
-model Ruta {
-  id          String    @id @default(uuid())
-  nombre      String
-  paraderos   Paradero[]
-  viajes      Viaje[]
-}
-
-model Paradero {
-  id          String  @id @default(uuid())
-  rutaId      String
-  ruta        Ruta    @relation(fields: [rutaId], references: [id])
-  nombre      String
-  latitud     Float
-  longitud    Float
-  orden       Int
-}
-
-model Tarifario {
-  id          String     @id @default(uuid())
-  tipoCarnet  TipoCarnet
-  precio      Float
-  descripcion String?
-  activo      Boolean    @default(true)
-  creadoEn    DateTime   @default(now())
-}
-
-// ─── VIAJES ──────────────────────────────────────────────────────────────────
-
-model Viaje {
-  id              String      @id @default(uuid())
-  pasajeroId      String
-  pasajero        Pasajero    @relation(fields: [pasajeroId], references: [id])
-  conductorId     String?
-  conductor       Conductor?  @relation(fields: [conductorId], references: [id])
-  unidadId        String?
-  unidad          Unidad?     @relation(fields: [unidadId], references: [id])
-  rutaId          String
-  ruta            Ruta        @relation(fields: [rutaId], references: [id])
-  paraderoInicio  String
-  paraderoFin     String
-  qrCodigo        String      @unique
-  estado          EstadoViaje @default(PENDIENTE)
-  montoDescontado Float       @default(0)
-  alertaPasajero  String?
-  escaneadoEn     DateTime?
-  creadoEn        DateTime    @default(now())
-  penalidad       Penalidad?
-}
-
-// ─── QR ──────────────────────────────────────────────────────────────────────
-
-model QrEscaneo {
-  id          String   @id @default(uuid())
-  qrCodigo    String
-  conductorId String
-  exitoso     Boolean
-  escaneadoEn DateTime @default(now())
-}
-
-// ─── PENALIDADES ─────────────────────────────────────────────────────────────
-
-model Penalidad {
-  id          String   @id @default(uuid())
-  pasajeroId  String
-  pasajero    Pasajero @relation(fields: [pasajeroId], references: [id])
-  viajeId     String   @unique
-  viaje       Viaje    @relation(fields: [viajeId], references: [id])
-  monto       Float
-  motivo      String
-  creadoEn    DateTime @default(now())
-}
-
-// ─── RECOMPENSAS ─────────────────────────────────────────────────────────────
-
-model Recompensa {
-  id          String   @id @default(uuid())
-  pasajeroId  String
-  pasajero    Pasajero @relation(fields: [pasajeroId], references: [id])
-  puntos      Int
-  motivo      String
-  creadoEn    DateTime @default(now())
-}
-
-// ─── RECARGAS ────────────────────────────────────────────────────────────────
-
-model Recarga {
-  id          String     @id @default(uuid())
-  pasajeroId  String
-  pasajero    Pasajero   @relation(fields: [pasajeroId], references: [id])
-  monto       Float
-  estado      EstadoPago @default(PENDIENTE)
-  creadoEn    DateTime   @default(now())
-}
-
-// ─── PAGOS DE SUELDO ─────────────────────────────────────────────────────────
-
-model PagoSueldo {
-  id              String        @id @default(uuid())
-  conductorId     String
-  conductor       Conductor     @relation(fields: [conductorId], references: [id])
-  administradorId String
-  administrador   Administrador @relation(fields: [administradorId], references: [id])
-  monto           Float
-  estado          EstadoPago    @default(PENDIENTE)
-  creadoEn        DateTime      @default(now())
-}
-
-// ─── COMUNICADOS ─────────────────────────────────────────────────────────────
-
-model Comunicado {
-  id              String        @id @default(uuid())
-  administradorId String
-  administrador   Administrador @relation(fields: [administradorId], references: [id])
-  titulo          String
-  contenido       String
-  creadoEn        DateTime      @default(now())
+model SolicitudCarnet {
+  id                    String          @id @default(uuid())
+  pasajeroId            String
+  tipoCarnetSolicitado  TipoCarnet
+  urlImagenDocumento    String
+  estado                EstadoSolicitud @default(PENDIENTE)
+  motivoRechazo         String?
+  creadoEn              DateTime        @default(now())
+  revisadoEn            DateTime?
+  pasajero              Pasajero        @relation(fields: [pasajeroId], references: [id])
 }

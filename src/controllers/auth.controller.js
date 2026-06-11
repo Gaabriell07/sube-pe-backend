@@ -6,12 +6,11 @@ const supabase = createClient(
   process.env.SUPABASE_ANON_KEY
 );
 
-// ─── REGISTRO ────────────────────────────────────────────────────────────────
 const registro = async (req, res) => {
   const { email, password, nombres, apellidos, dni, fechaNacimiento, sexo, rol } = req.body;
 
   try {
-    // ── 1. Verificar que el DNI no esté ya registrado (pasajero o conductor)
+    
     if (dni) {
       const dniExistente = await prisma.usuario.findFirst({ where: { dni } });
       if (dniExistente) {
@@ -22,7 +21,6 @@ const registro = async (req, res) => {
       }
     }
 
-    // ── 2. Crear usuario en Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
@@ -30,7 +28,6 @@ const registro = async (req, res) => {
 
     if (authError) return res.status(400).json({ error: authError.message });
 
-    // 2. Crear usuario en nuestra base de datos con Prisma
     const usuario = await prisma.usuario.create({
       data: {
         supabaseId: authData.user.id,
@@ -44,7 +41,6 @@ const registro = async (req, res) => {
       },
     });
 
-    // 3. Crear perfil según el rol
     if (rol === 'PASAJERO') {
       await prisma.pasajero.create({
         data: { usuarioId: usuario.id },
@@ -66,7 +62,6 @@ const registro = async (req, res) => {
   }
 };
 
-// ─── LOGIN ───────────────────────────────────────────────────────────────────
 const login = async (req, res) => {
   const { email, password } = req.body;
 
@@ -78,7 +73,6 @@ const login = async (req, res) => {
 
     if (error) return res.status(400).json({ error: error.message });
 
-    // Obtener datos completos del usuario
     const usuario = await prisma.usuario.findUnique({
       where: { supabaseId: data.user.id },
       include: {
@@ -98,7 +92,6 @@ const login = async (req, res) => {
   }
 };
 
-// ─── RECUPERAR PASSWORD ──────────────────────────────────────────────────────
 const recuperarPassword = async (req, res) => {
   const { email } = req.body;
 
@@ -114,18 +107,16 @@ const recuperarPassword = async (req, res) => {
   }
 };
 
-// ─── REGISTRO CON GOOGLE ─────────────────────────────────────────────────────
 const registroGoogle = async (req, res) => {
   const { supabaseId, email, nombres, apellidos } = req.body;
 
   try {
-    // Buscar si el usuario ya existe
+    
     let usuario = await prisma.usuario.findUnique({
       where: { supabaseId },
       include: { pasajero: true, conductor: true, administrador: true },
     });
 
-    // Si no existe, crearlo con rol PASAJERO por defecto
     if (!usuario) {
       usuario = await prisma.usuario.create({
         data: {
@@ -140,12 +131,10 @@ const registroGoogle = async (req, res) => {
         },
       });
 
-      // Crear perfil de pasajero
       await prisma.pasajero.create({
         data: { usuarioId: usuario.id },
       });
 
-      // Volver a cargar con relaciones
       usuario = await prisma.usuario.findUnique({
         where: { id: usuario.id },
         include: { pasajero: true, conductor: true, administrador: true },

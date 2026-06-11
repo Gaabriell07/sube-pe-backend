@@ -17,11 +17,14 @@ router.get('/recargas', pasajeroController.getRecargas);
 router.get('/comunicados', pasajeroController.getComunicados);
 router.get('/puntos', recompensaController.getFidelidad);
 router.post('/canjear-viaje-gratis', recompensaController.canjearViajeGratis);
-// ─── Alertas de viaje activo (polling) ────────────────────────────────────────
+
 router.get('/viaje-activo-estado',          pasajeroController.getViajeActivoEstado);
 router.post('/confirmar-alerta/:viajeId',   pasajeroController.confirmarAlerta);
 
-// ─── Bajar del bus (sin penalidad si está antes del destino) ──────────────────
 router.post('/bajar',                       pasajeroController.bajarDelBus);
+
+const solicitudesController = require('../controllers/solicitudes.controller');
+router.post('/solicitud-carnet', solicitudesController.crearSolicitud);
+router.get('/mis-solicitudes', solicitudesController.getMisSolicitudes);
 
 module.exports = router;

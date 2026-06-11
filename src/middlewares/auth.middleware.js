@@ -1,5 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
-const prisma = require('../lib/prisma'); // ← usa el singleton, no crea otro PrismaClient
+const prisma = require('../lib/prisma'); 
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -16,14 +16,12 @@ const verificarToken = async (req, res, next) => {
 
     const token = authHeader.split(' ')[1];
 
-    // Verificar token con Supabase
     const { data, error } = await supabase.auth.getUser(token);
 
     if (error || !data.user) {
       return res.status(401).json({ error: 'Token inválido o expirado' });
     }
 
-    // Obtener usuario de nuestra BD (usando el singleton compartido)
     const usuario = await prisma.usuario.findUnique({
       where: { supabaseId: data.user.id },
       include: {

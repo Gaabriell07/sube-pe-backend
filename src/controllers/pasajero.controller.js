@@ -2,7 +2,6 @@ const { v4: uuidv4 } = require('uuid');
 const QRCode = require('qrcode');
 const prisma = require('../lib/prisma');
 
-// ─── PERFIL ──────────────────────────────────────────────────────────────────
 const getPerfil = async (req, res) => {
   try {
     const usuario = await prisma.usuario.findUnique({
@@ -34,7 +33,6 @@ const actualizarPerfil = async (req, res) => {
   }
 };
 
-// ─── SALDO ───────────────────────────────────────────────────────────────────
 const getSaldo = async (req, res) => {
   try {
     const pasajero = await prisma.pasajero.findUnique({
@@ -72,7 +70,6 @@ const recargarSaldo = async (req, res) => {
   }
 };
 
-// ─── QR ──────────────────────────────────────────────────────────────────────
 const generarQR = async (req, res) => {
   const { rutaId, paraderoInicio, paraderoFin, monto } = req.body;
   try {
@@ -82,15 +79,14 @@ const generarQR = async (req, res) => {
 
     const { tipoCarnet } = pasajero;
 
-    // Carnets con viaje 100% gratuito (sin descuento de saldo)
     const CARNETS_GRATIS = ['POLICIA', 'MILITAR', 'DISCAPACITADO'];
-    // Carnets con precio FIJO del tarifario (independiente de la distancia)
+    
     const CARNETS_PRECIO_FIJO = ['UNIVERSITARIO', 'ESCOLAR'];
 
     let precioFinal = 0;
 
     if (CARNETS_GRATIS.includes(tipoCarnet)) {
-      // Viaje gratuito — no se verifica ni descuenta saldo
+      
       precioFinal = 0;
     } else {
       const tarifario = await prisma.tarifario.findFirst({
@@ -102,11 +98,10 @@ const generarQR = async (req, res) => {
       }
 
       if (CARNETS_PRECIO_FIJO.includes(tipoCarnet)) {
-        // UNIVERSITARIO y ESCOLAR pagan siempre su tarifa fija sin importar la distancia
+        
         precioFinal = tarifario.precio;
       } else {
-        // NORMAL (y ADULTO_MAYOR si lo agregas) → precio por distancia del frontend
-        // pero nunca menor que el tarifario base
+
         precioFinal = monto && parseFloat(monto) > 0 ? parseFloat(monto) : tarifario.precio;
       }
 
@@ -137,7 +132,6 @@ const generarQR = async (req, res) => {
   }
 };
 
-// ─── VIAJES ──────────────────────────────────────────────────────────────────
 const getMisViajes = async (req, res) => {
   try {
     const pasajero = await prisma.pasajero.findUnique({
@@ -156,7 +150,6 @@ const getMisViajes = async (req, res) => {
   }
 };
 
-// ─── RECARGAS ────────────────────────────────────────────────────────────────
 const getRecargas = async (req, res) => {
   try {
     const pasajero = await prisma.pasajero.findUnique({
@@ -174,7 +167,6 @@ const getRecargas = async (req, res) => {
   }
 };
 
-// ─── COMUNICADOS (lectura pública para pasajeros) ───────────────────────────────
 const getComunicados = async (req, res) => {
   try {
     const comunicados = await prisma.comunicado.findMany({
@@ -192,7 +184,6 @@ const getComunicados = async (req, res) => {
   }
 };
 
-// ─── ESTADO DEL VIAJE ACTIVO (polling de alertas) ─────────────────────────────
 const getViajeActivoEstado = async (req, res) => {
   try {
     const pasajero = await prisma.pasajero.findUnique({
@@ -217,7 +208,6 @@ const getViajeActivoEstado = async (req, res) => {
   }
 };
 
-// ─── CONFIRMAR ALERTA (pasajero la vio, limpiar) ──────────────────────────────
 const confirmarAlerta = async (req, res) => {
   const { viajeId } = req.params;
   try {
@@ -231,14 +221,12 @@ const confirmarAlerta = async (req, res) => {
   }
 };
 
-// ─── BAJAR DEL BUS (pasajero confirma que baja, sin penalidad) ────────────────
 const bajarDelBus = async (req, res) => {
   try {
     const pasajero = await prisma.pasajero.findUnique({
       where: { usuarioId: req.usuario.id },
     });
 
-    // Buscar viaje activo del pasajero
     const viaje = await prisma.viaje.findFirst({
       where: { pasajeroId: pasajero.id, estado: 'EN_CURSO' },
     });
@@ -247,17 +235,12 @@ const bajarDelBus = async (req, res) => {
       return res.status(404).json({ error: 'No tienes un viaje activo' });
     }
 
-    // Si el conductor ya pasó el destino → la penalidad ya fue aplicada
     if (viaje.alertaPasajero === 'PASADO') {
       return res.status(400).json({
         error: 'El conductor ya pasó tu destino. La penalidad fue aplicada automáticamente.',
       });
     }
 
-    // NOTA: el saldo ya fue descontado cuando el conductor escaneó el QR.
-    // NO volver a descontar aquí.
-
-    // Cerrar el viaje como COMPLETADO limpiamente
     const viajeActualizado = await prisma.viaje.update({
       where: { id: viaje.id },
       data: {

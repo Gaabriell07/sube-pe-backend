@@ -1,14 +1,11 @@
 const prisma = require('../lib/prisma');
 
-// ─── FIDELIDAD (tarjeta de sellos) ───────────────────────────────────────────
-// Cada 30 viajes completados = 1 viaje gratis
 const getFidelidad = async (req, res) => {
   try {
     const pasajero = await prisma.pasajero.findUnique({
       where: { usuarioId: req.usuario.id },
     });
 
-    // Contar viajes completados (escaneados por conductor)
     const totalViajes = await prisma.viaje.count({
       where: {
         pasajeroId: pasajero.id,
@@ -16,18 +13,15 @@ const getFidelidad = async (req, res) => {
       },
     });
 
-    // Viajes gratis ganados
     const viajesGratisGanados = Math.floor(totalViajes / 30);
 
-    // Canjes ya utilizados (puntos = -1 indica canje usado)
     const viajesGratisUsados = await prisma.recompensa.count({
       where: { pasajeroId: pasajero.id, puntos: -1 },
     });
 
     const viajesGratisDisponibles = Math.max(0, viajesGratisGanados - viajesGratisUsados);
-    const sellosActuales = totalViajes % 30; // Progreso en la tarjeta actual
+    const sellosActuales = totalViajes % 30; 
 
-    // Historial de canjes usados
     const historialCanjes = await prisma.recompensa.findMany({
       where: { pasajeroId: pasajero.id, puntos: -1 },
       orderBy: { creadoEn: 'desc' },
@@ -47,14 +41,12 @@ const getFidelidad = async (req, res) => {
   }
 };
 
-// ─── CANJEAR VIAJE GRATIS ────────────────────────────────────────────────────
 const canjearViajeGratis = async (req, res) => {
   try {
     const pasajero = await prisma.pasajero.findUnique({
       where: { usuarioId: req.usuario.id },
     });
 
-    // Verificar que tiene viajes gratis disponibles
     const totalViajes = await prisma.viaje.count({
       where: { pasajeroId: pasajero.id, estado: { in: ['EN_CURSO', 'COMPLETADO'] } },
     });
@@ -67,7 +59,6 @@ const canjearViajeGratis = async (req, res) => {
       return res.status(400).json({ error: 'No tienes viajes gratis disponibles' });
     }
 
-    // Registrar el canje (puntos = -1 = ticket usado)
     await prisma.recompensa.create({
       data: {
         pasajeroId: pasajero.id,
@@ -82,7 +73,6 @@ const canjearViajeGratis = async (req, res) => {
   }
 };
 
-// ─── OTORGAR RECOMPENSA (admin) ──────────────────────────────────────────────
 const otorgarRecompensa = async (req, res) => {
   const { pasajeroId, puntos, motivo } = req.body;
   try {

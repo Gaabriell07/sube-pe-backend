@@ -1,6 +1,5 @@
 const prisma = require('../lib/prisma');
 
-// ─── OBTENER RUTAS ───────────────────────────────────────────────────────────
 const getRutas = async (req, res) => {
   try {
     const rutas = await prisma.ruta.findMany({
@@ -14,7 +13,6 @@ const getRutas = async (req, res) => {
   }
 };
 
-// ─── OBTENER RUTA POR ID ─────────────────────────────────────────────────────
 const getRuta = async (req, res) => {
   const { id } = req.params;
   try {
@@ -33,7 +31,6 @@ const getRuta = async (req, res) => {
   }
 };
 
-// ─── CREAR RUTA ──────────────────────────────────────────────────────────────
 const crearRuta = async (req, res) => {
   const { nombre, paraderos } = req.body;
   try {
@@ -61,7 +58,6 @@ const crearRuta = async (req, res) => {
   }
 };
 
-// ─── AGREGAR PARADERO ────────────────────────────────────────────────────────
 const agregarParadero = async (req, res) => {
   const { id } = req.params;
   const { nombre, latitud, longitud, orden } = req.body;
@@ -76,7 +72,6 @@ const agregarParadero = async (req, res) => {
   }
 };
 
-// ─── ELIMINAR RUTA ───────────────────────────────────────────────────────────
 const eliminarRuta = async (req, res) => {
   const { id } = req.params;
   try {

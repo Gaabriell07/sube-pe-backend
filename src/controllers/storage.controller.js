@@ -6,7 +6,6 @@ const supabase = createClient(
   process.env.SUPABASE_ANON_KEY
 );
 
-// ─── SUBIR ARCHIVO ───────────────────────────────────────────────────────────
 const subirArchivo = async (req, res) => {
   const { tipo } = req.body;
 
@@ -18,7 +17,6 @@ const subirArchivo = async (req, res) => {
     const extension = req.file.originalname.split('.').pop();
     const nombreArchivo = `${req.usuario.id}/${tipo}-${Date.now()}.${extension}`;
 
-    // Subir a Supabase Storage
     const { data, error } = await supabase.storage
       .from('subepe-archivos')
       .upload(nombreArchivo, req.file.buffer, {
@@ -28,12 +26,10 @@ const subirArchivo = async (req, res) => {
 
     if (error) return res.status(400).json({ error: error.message });
 
-    // Obtener URL pública
     const { data: urlData } = supabase.storage
       .from('subepe-archivos')
       .getPublicUrl(nombreArchivo);
 
-    // Guardar en base de datos
     const archivo = await prisma.archivo.create({
       data: {
         usuarioId: req.usuario.id,
@@ -49,7 +45,6 @@ const subirArchivo = async (req, res) => {
   }
 };
 
-// ─── MIS ARCHIVOS ────────────────────────────────────────────────────────────
 const getMisArchivos = async (req, res) => {
   try {
     const archivos = await prisma.archivo.findMany({
@@ -62,7 +57,6 @@ const getMisArchivos = async (req, res) => {
   }
 };
 
-// ─── ELIMINAR ARCHIVO ────────────────────────────────────────────────────────
 const eliminarArchivo = async (req, res) => {
   const { id } = req.params;
   try {
@@ -70,11 +64,9 @@ const eliminarArchivo = async (req, res) => {
 
     if (!archivo) return res.status(404).json({ error: 'Archivo no encontrado' });
 
-    // Eliminar de Supabase Storage
     const path = archivo.url.split('subepe-archivos/')[1];
     await supabase.storage.from('subepe-archivos').remove([path]);
 
-    // Eliminar de base de datos
     await prisma.archivo.delete({ where: { id } });
 
     res.json({ mensaje: 'Archivo eliminado exitosamente' });

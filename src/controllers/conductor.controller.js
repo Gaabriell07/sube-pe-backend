@@ -1,7 +1,6 @@
 const prisma = require('../lib/prisma');
 const conductorService = require('../services/conductor.service');
 
-// ─── PERFIL ──────────────────────────────────────────────────────────────────
 const getPerfil = async (req, res) => {
   try {
     const usuario = await prisma.usuario.findUnique({
@@ -20,7 +19,6 @@ const getPerfil = async (req, res) => {
   }
 };
 
-// ─── SALDO ───────────────────────────────────────────────────────────────────
 const getSaldo = async (req, res) => {
   try {
     const conductor = await prisma.conductor.findUnique({
@@ -32,7 +30,6 @@ const getSaldo = async (req, res) => {
   }
 };
 
-// ─── ESCANEAR QR ─────────────────────────────────────────────────────────────
 const escanearQR = async (req, res) => {
   const { qrCodigo } = req.body;
 
@@ -41,7 +38,6 @@ const escanearQR = async (req, res) => {
       where: { usuarioId: req.usuario.id },
     });
 
-    // Buscar el viaje con ese QR
     const viaje = await prisma.viaje.findUnique({
       where: { qrCodigo },
       include: {
@@ -61,19 +57,16 @@ const escanearQR = async (req, res) => {
       return res.status(400).json({ error: 'Este QR ya fue usado' });
     }
 
-    // Descontar saldo al pasajero
     await prisma.pasajero.update({
       where: { id: viaje.pasajeroId },
       data: { saldo: { decrement: viaje.montoDescontado } },
     });
 
-    // Acreditar comisión al conductor
     await prisma.conductor.update({
       where: { id: conductor.id },
       data: { saldo: { increment: viaje.montoDescontado } },
     });
 
-    // Actualizar viaje a EN_CURSO
     await prisma.viaje.update({
       where: { id: viaje.id },
       data: {
@@ -83,12 +76,10 @@ const escanearQR = async (req, res) => {
       },
     });
 
-    // Registrar escaneo exitoso
     await prisma.qrEscaneo.create({
       data: { qrCodigo, conductorId: conductor.id, exitoso: true },
     });
 
-    // Otorgar puntos al pasajero por el viaje (10 puntos base por viaje)
     await prisma.recompensa.create({
       data: {
         pasajeroId: viaje.pasajeroId,
@@ -113,14 +104,12 @@ const escanearQR = async (req, res) => {
   }
 };
 
-// ─── PASAJEROS ACTIVOS ───────────────────────────────────────────────────────
 const getPasajerosActivos = async (req, res) => {
   try {
     const conductor = await prisma.conductor.findUnique({
       where: { usuarioId: req.usuario.id },
     });
 
-    // Pasajeros actualmente a bordo (EN_CURSO)
     const activos = await prisma.viaje.findMany({
       where: { conductorId: conductor.id, estado: 'EN_CURSO' },
       include: {
@@ -130,7 +119,6 @@ const getPasajerosActivos = async (req, res) => {
       orderBy: { escaneadoEn: 'desc' },
     });
 
-    // Viajes validados hoy (EN_CURSO + COMPLETADO escaneados hoy)
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
     const validadosHoy = await prisma.viaje.count({
@@ -147,8 +135,6 @@ const getPasajerosActivos = async (req, res) => {
   }
 };
 
-// ─── SISTEMA DE TURNO POR PARADEROS ──────────────────────────────────────────
-// Lista maestro de paraderos en orden Norte → Sur (mismo orden que el frontend)
 const PARADEROS = [
   'SANTA ROSA', 'PROC. DE LA INDEPENDENCIA', 'ACHO', 'PIZARRO - CAQUETA',
   'ALFONSO UGARTE', 'AV. BRASIL', 'AV. DEL EJERCITO', 'PARDO - MIRAFLORES',
@@ -162,7 +148,6 @@ const iniciarTurno = async (req, res) => {
       where: { usuarioId: req.usuario.id },
     });
 
-    // Obtener la ruta CPSA (primera disponible)
     const ruta = await prisma.ruta.findFirst({
       include: { paraderos: { orderBy: { orden: 'asc' } } },
     });
@@ -212,13 +197,11 @@ const siguienteParadero = async (req, res) => {
       where: { usuarioId: req.usuario.id },
     });
 
-    // Actualizar posición del conductor
     await prisma.conductor.update({
       where: { id: conductor.id },
       data: { paraderoActualIdx: paraderoIdx },
     });
 
-    // Obtener todos los viajes EN_CURSO de este conductor
     const viajesActivos = await prisma.viaje.findMany({
       where: { conductorId: conductor.id, estado: 'EN_CURSO' },
     });
@@ -227,29 +210,28 @@ const siguienteParadero = async (req, res) => {
 
     for (const viaje of viajesActivos) {
       const destinoIdx = PARADEROS.indexOf(viaje.paraderoFin);
-      if (destinoIdx === -1) continue; // paradero no encontrado, saltar
+      if (destinoIdx === -1) continue; 
 
       const diff = destinoIdx - paraderoIdx;
 
       let alerta = null;
 
       if (diff === 1) {
-        // Falta 1 paradero para su destino
+        
         alerta = 'CERCA_DESTINO';
         await prisma.viaje.update({ where: { id: viaje.id }, data: { alertaPasajero: alerta } });
         alertasGeneradas.push({ viajeId: viaje.id, alerta, destino: viaje.paraderoFin });
 
       } else if (diff === 0) {
-        // El conductor está exactamente en el paradero del pasajero
+        
         alerta = 'EN_DESTINO';
         await prisma.viaje.update({ where: { id: viaje.id }, data: { alertaPasajero: alerta } });
         alertasGeneradas.push({ viajeId: viaje.id, alerta, destino: viaje.paraderoFin });
 
       } else if (diff < 0) {
-        // El pasajero se pasó de su destino → penalidad
+        
         const montoExtra = 2.00;
 
-        // Verificar que no tenga ya una penalidad para este viaje
         const penalidad = await prisma.penalidad.findUnique({ where: { viajeId: viaje.id } });
         if (!penalidad) {
           await prisma.penalidad.create({
@@ -304,10 +286,6 @@ const finalizarTurno = async (req, res) => {
   }
 };
 
-// ─── GANANCIAS DEL DÍA ───────────────────────────────────────────────────────
-// OCP: la lógica de cálculo vive en conductorService; este controller
-// solo orquesta (HTTP in → servicio → HTTP out). Agregar filtros futuros
-// (semana, mes) no requiere modificar este controller.
 const getGananciasHoy = async (req, res) => {
   try {
     const conductor = await prisma.conductor.findUnique({
