@@ -9,12 +9,16 @@ const crearSolicitud = async (req, res) => {
 
     if (!pasajero) return res.status(404).json({ error: 'Pasajero no encontrado' });
 
+    if (!tipoCarnetSolicitado || !urlImagenDocumento) {
+      return res.status(400).json({ error: 'Faltan datos: tipo de carnet e imagen son obligatorios' });
+    }
+
     const solicitudPendiente = await prisma.solicitudCarnet.findFirst({
       where: { pasajeroId: pasajero.id, estado: 'PENDIENTE' },
     });
 
     if (solicitudPendiente) {
-      return res.status(400).json({ error: 'Ya tienes una solicitud de carnet en proceso de revisión.' });
+      return res.status(400).json({ error: 'Ya tienes una solicitud pendiente de revisión. Espera a que el administrador la procese.' });
     }
 
     const nuevaSolicitud = await prisma.solicitudCarnet.create({
